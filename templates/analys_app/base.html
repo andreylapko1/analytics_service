@@ -1,0 +1,27 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Анализ Данных</title>
+    <link rel="stylesheet" href="{% static 'css/base.css' %}">
+</head>
+<body>
+    <div class="container">
+        <h1>Ввод данных для анализа</h1>
+        <form method="post">
+            {% csrf_token %}
+            <div class="form-group">
+                <label for="category">Введите категорию:</label>
+                <input type="text" id="category" name="category_name" placeholder="Например: электроника">
+            </div>
+            <div class="form-group">
+                <label for="page_count">Введите количество страниц:</label>
+                <input type="number" id="page_count" name="page_count" min="1" value="1">
+            </div>
+            <button type="submit">Отправить</button>
+        </form>
+    </div>
+</body>
+</html>

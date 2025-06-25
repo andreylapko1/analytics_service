@@ -1,0 +1,421 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Таблица товаров и диаграммы</title>
+    <link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>Каталог товаров</h1>
+
+        <div class="filters">
+            <h2>Фильтры</h2>
+
+            <div class="filter-group">
+                <label for="price-range">Диапазон цен:</label>
+                <div class="price-slider-container">
+                    <span id="min-price-display">0</span> - <span id="max-price-display">10000</span>
+                    <input type="range" id="min-price-slider" min="0" max="10000" value="0">
+                    <input type="range" id="max-price-slider" min="0" max="10000" value="10000">
+                </div>
+            </div>
+
+            <div class="filter-group">
+                <label for="min-rating">Минимальный рейтинг:</label>
+                <input type="number" id="min-rating" min="0" max="5" step="0.1" value="0">
+            </div>
+
+            <div class="filter-group">
+                <label for="min-reviews">Минимальное количество отзывов:</label>
+                <input type="number" id="min-reviews" min="0" value="0">
+            </div>
+
+            <button id="apply-filters">Применить фильтры</button>
+        </div>
+
+        <div class="product-table-section">
+            <h2>Таблица товаров</h2>
+            <table id="product-table">
+                <thead>
+                    <tr>
+                        <th data-sort="product_name">Название товара <span class="sort-indicator"></span></th>
+                        <th data-sort="product_price">Цена <span class="sort-indicator"></span></th>
+                        <th>Цена со скидкой</th>
+                        <th data-sort="product_rate">Рейтинг <span class="sort-indicator"></span></th>
+                        <th data-sort="review_count">Количество отзывов <span class="sort-indicator"></span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="charts-section">
+            <h2>Диаграммы</h2>
+            <div class="chart-container">
+                <h3>Гистограмма цен</h3>
+                <canvas id="priceHistogramChart"></canvas>
+            </div>
+            <div class="chart-container">
+                <h3>Размер скидки vs Рейтинг</h3>
+                <canvas id="discountRatingChart"></canvas>
+            </div>
+        </div>
+    </div>
+<script>
+   let allProducts = [];
+let currentFilteredProducts = [];
+let currentSortColumn = 'product_name';
+let currentSortOrder = 'asc';
+
+const productTableBody = document.querySelector('#product-table tbody');
+const filterButton = document.getElementById('apply-filters');
+const minPriceSlider = document.getElementById('min-price-slider');
+const maxPriceSlider = document.getElementById('max-price-slider');
+const minPriceDisplay = document.getElementById('min-price-display');
+const maxPriceDisplay = document.getElementById('max-price-display');
+const minRatingInput = document.getElementById('min-rating');
+const minReviewsInput = document.getElementById('min-reviews');
+const tableHeaders = document.querySelectorAll('#product-table th[data-sort]');
+
+let priceHistogramChart;
+let discountRatingChart;
+
+function renderTable(productsToRender) {
+    productTableBody.innerHTML = '';
+
+    if (productsToRender.length === 0) {
+        const noResultsRow = document.createElement('tr');
+        noResultsRow.innerHTML = '<td colspan="5" style="text-align: center; padding: 15px;">Товары не найдены.</td>';
+        productTableBody.appendChild(noResultsRow);
+        return;
+    }
+
+    productsToRender.forEach(product => {
+        const row = document.createElement('tr');
+
+        const price = product.product_price !== null && product.product_price !== undefined ? parseFloat(product.product_price) : null;
+        const discountPrice = product.product_discount_price !== null && product.product_discount_price !== undefined ? parseFloat(product.product_discount_price) : null;
+        const rate = product.product_rate !== null && product.product_rate !== undefined ? parseFloat(product.product_rate) : null;
+
+        row.innerHTML = `
+            <td>${product.product_name || 'N/A'}</td>
+            <td>${price !== null ? price.toFixed(2) : 'N/A'}</td>
+            <td>${discountPrice !== null ? discountPrice.toFixed(2) : 'N/A'}</td>
+            <td>${rate !== null ? rate.toFixed(1) : 'N/A'}</td>
+            <td>${product.review_count !== null ? product.review_count : 'N/A'}</td>
+        `;
+        productTableBody.appendChild(row);
+    });
+}
+
+function applyFilters(products) {
+    const minPrice = parseFloat(minPriceSlider.value);
+    const maxPrice = parseFloat(maxPriceSlider.value);
+    const minRating = parseFloat(minRatingInput.value);
+    const minReviews = parseInt(minReviewsInput.value);
+
+    return products.filter(product => {
+        const productPrice = product.product_price !== null && product.product_price !== undefined ? parseFloat(product.product_price) : 0;
+        const productRating = product.product_rate !== null && product.product_rate !== undefined ? parseFloat(product.product_rate) : 0;
+        const productReviews = product.review_count !== null && product.review_count !== undefined ? parseInt(product.review_count) : 0;
+
+        return productPrice >= minPrice &&
+               productPrice <= maxPrice &&
+               productRating >= minRating &&
+               productReviews >= minReviews;
+    });
+}
+
+function sortProducts(products, column, order) {
+    return [...products].sort((a, b) => {
+        let valA = a[column];
+        let valB = b[column];
+
+        const isNumericColumn = ['product_price', 'product_discount_price', 'product_rate', 'review_count'].includes(column);
+
+        if (isNumericColumn) {
+            valA = (valA === null || valA === undefined || isNaN(parseFloat(valA))) ? (order === 'asc' ? -Infinity : Infinity) : parseFloat(valA);
+            valB = (valB === null || valB === undefined || isNaN(parseFloat(valB))) ? (order === 'asc' ? -Infinity : Infinity) : parseFloat(valB);
+
+            if (column === 'review_count') {
+                valA = Math.round(valA);
+                valB = Math.round(valB);
+            }
+
+            return order === 'asc' ? valA - valB : valB - valA;
+        } else {
+            valA = (valA === null || valA === undefined) ? '' : String(valA);
+            valB = (valB === null || valB === undefined) ? '' : String(valB);
+            return order === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        }
+    });
+}
+
+function updateSortIndicators() {
+    tableHeaders.forEach(header => {
+        header.classList.remove('sort-asc', 'sort-desc');
+        if (header.dataset.sort === currentSortColumn) {
+            header.classList.add(`sort-${currentSortOrder}`);
+        }
+    });
+}
+
+function updateCharts() {
+    const prices = currentFilteredProducts.map(p => p.product_price).filter(p => p !== null);
+    updatePriceHistogram(prices);
+
+    const discountRatingData = currentFilteredProducts.filter(p => p.product_price !== null && p.product_discount_price !== null && p.product_rate !== null).map(p => ({
+        rating: parseFloat(p.product_rate), // Убедимся, что это число
+        discount: (parseFloat(p.product_price) - parseFloat(p.product_discount_price)) // Убедимся, что это числа
+    }));
+    updateDiscountRatingChart(discountRatingData);
+}
+
+function updatePriceHistogram(prices) {
+    const allPricesForRange = allProducts.map(p => {
+        const price = parseFloat(p.product_price);
+        return isNaN(price) ? null : price;
+    }).filter(p => p !== null);
+
+    const minOverallPrice = allPricesForRange.length > 0 ? Math.min(...allPricesForRange) : 0;
+    const maxOverallPrice = allPricesForRange.length > 0 ? Math.max(...allPricesForRange) : 10000;
+
+    const binCount = 10;
+    const binWidth = (maxOverallPrice - minOverallPrice) / binCount;
+    const priceBins = [];
+    for (let i = 0; i <= binCount; i++) {
+        priceBins.push(minOverallPrice + i * binWidth);
+    }
+
+    const counts = new Array(priceBins.length - 1).fill(0);
+    const labels = [];
+
+    currentFilteredProducts.forEach(product => {
+        const price = parseFloat(product.product_price); // Убедимся, что это число
+        if (!isNaN(price)) {
+            for (let i = 0; i < priceBins.length - 1; i++) {
+                if (price >= priceBins[i] && (i === priceBins.length - 2 || price < priceBins[i + 1])) {
+                    counts[i]++;
+                    break;
+                }
+            }
+        }
+    });
+
+    for (let i = 0; i < priceBins.length - 1; i++) {
+        labels.push(`${priceBins[i].toFixed(0)} - ${priceBins[i + 1].toFixed(0)}`);
+    }
+
+    const ctx = document.getElementById('priceHistogramChart').getContext('2d');
+
+    if (priceHistogramChart) {
+        priceHistogramChart.data.labels = labels;
+        priceHistogramChart.data.datasets[0].data = counts;
+        priceHistogramChart.update();
+    } else {
+        priceHistogramChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Количество товаров',
+                    data: counts,
+                    backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Количество товаров'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Диапазон цен'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+    }
+}
+
+function updateDiscountRatingChart(data) {
+    const ctx = document.getElementById('discountRatingChart').getContext('2d');
+
+    if (discountRatingChart) {
+        discountRatingChart.data.datasets[0].data = data.map(d => ({ x: d.rating, y: d.discount }));
+        discountRatingChart.update();
+    } else {
+        discountRatingChart = new Chart(ctx, {
+            type: 'scatter',
+            data: {
+                datasets: [{
+                    label: 'Размер скидки',
+                    data: data.map(d => ({ x: d.rating, y: d.discount })),
+                    backgroundColor: 'rgba(153, 102, 255, 0.6)',
+                    borderColor: 'rgba(153, 102, 255, 1)',
+                    borderWidth: 1,
+                    pointRadius: 5
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        type: 'linear',
+                        position: 'bottom',
+                        title: {
+                            display: true,
+                            text: 'Рейтинг'
+                        },
+                        min: 0,
+                        max: 5
+                    },
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Размер скидки'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+    }
+}
+
+function updateAll() {
+    currentFilteredProducts = applyFilters(allProducts);
+    currentFilteredProducts = sortProducts(currentFilteredProducts, currentSortColumn, currentSortOrder);
+    renderTable(currentFilteredProducts);
+    updateCharts();
+    updateSortIndicators();
+}
+
+minPriceSlider.addEventListener('input', () => {
+    let minVal = parseInt(minPriceSlider.value);
+    let maxVal = parseInt(maxPriceSlider.value);
+    if (minVal > maxVal) {
+        minPriceSlider.value = maxVal;
+    }
+    minPriceDisplay.textContent = minPriceSlider.value;
+    updateAll();
+});
+
+maxPriceSlider.addEventListener('input', () => {
+    let minVal = parseInt(minPriceSlider.value);
+    let maxVal = parseInt(maxPriceSlider.value);
+    if (maxVal < minVal) {
+        maxPriceSlider.value = minVal;
+    }
+    maxPriceDisplay.textContent = maxPriceSlider.value;
+    updateAll();
+});
+
+filterButton.addEventListener('click', updateAll);
+minRatingInput.addEventListener('change', updateAll);
+minReviewsInput.addEventListener('change', updateAll);
+
+tableHeaders.forEach(header => {
+    header.addEventListener('click', () => {
+        const column = header.dataset.sort;
+        if (currentSortColumn === column) {
+            currentSortOrder = currentSortOrder === 'asc' ? 'desc' : 'asc';
+        } else {
+            currentSortColumn = column;
+            currentSortOrder = 'asc';
+        }
+        updateAll();
+    });
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+    minPriceDisplay.textContent = minPriceSlider.value;
+    maxPriceDisplay.textContent = maxPriceSlider.value;
+
+    fetch('{% url "product_list" %}')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Ошибка HTTP! Статус: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Данные напрямую от API (data):', data);
+
+            allProducts = data;
+            console.log('Содержимое allProducts после присваивания:', allProducts);
+            console.log('Количество товаров в allProducts:', allProducts.length);
+
+
+            if (allProducts.length > 0) {
+                const prices = allProducts.map(p => {
+                    let price = p.product_price;
+                    // ЛОГИРОВАНИЕ 3: Как выглядит price перед parseFloat
+                    console.log(`Обработка цены: "${price}" (тип: ${typeof price})`);
+
+                    if (typeof price === 'string' && price.trim() === '') {
+                    }
+                    return parseFloat(price);
+                }).filter(p => p !== null && !isNaN(p));
+                console.log('Массив "prices" для расчета диапазона:', prices);
+
+
+                if (prices.length > 0) {
+                    const minOverallPrice = Math.floor(Math.min(...prices));
+                    const maxOverallPrice = Math.ceil(Math.max(...prices));
+
+                    // ЛОГИРОВАНИЕ 5: Вычисленные min/max OverallPrice
+                    console.log('Вычисленный minOverallPrice:', minOverallPrice, 'Вычисленный maxOverallPrice:', maxOverallPrice);
+
+                    minPriceSlider.min = minOverallPrice;
+                    minPriceSlider.max = maxOverallPrice;
+                    maxPriceSlider.min = minOverallPrice;
+                    maxPriceSlider.max = maxOverallPrice;
+
+                    minPriceSlider.value = minOverallPrice;
+                    maxPriceSlider.value = maxOverallPrice;
+                    minPriceDisplay.textContent = minOverallPrice;
+                    maxPriceDisplay.textContent = maxOverallPrice;
+                } else {
+                    console.log('Массив "prices" пуст после фильтрации. Сбрасываем слайдеры.');
+                }
+            } else {
+                console.log('Массив "allProducts" пуст. Сбрасываем слайдеры.');
+            }
+            updateAll();
+        })
+        .catch(error => {
+            console.error('Ошибка при загрузке данных о товарах:', error);
+            productTableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: red; padding: 15px;">Не удалось загрузить данные о товарах.</td></tr>';
+        });
+});
+
+</script>
+</body>
+</html>
