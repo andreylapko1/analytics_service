@@ -2,16 +2,18 @@ from selenium.common import WebDriverException
 from selenium.webdriver.common.by import By
 from selenium import webdriver
 import logging
-from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support.wait import WebDriverWait
-from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.support import expected_conditions as EC
 from selenium_stealth import stealth
-import time
-
 import undetected_chromedriver as uc
 
 def pars_pages(url, pages=3):
+    '''
+        Use selenium, undetected_chromedriver, selenium stealth to get info from site
+    :param url: - Url to get info
+    :param pages: - How many pages to parse
+    :return: pars_data_dict - Dict with data
+    '''
     pars_data_dict = {}
 
     options = webdriver.ChromeOptions()
@@ -60,7 +62,7 @@ def pars_pages(url, pages=3):
                 except WebDriverException  as e:
                     logging.warning(f'Web driver error: ', e)
 
-        logging.info('Все элементы загружены и обработаны.')
+        logging.info('All elements were loaded.')
     except WebDriverException as e:
         logging.warning(f'Web driver error: ', e)
 

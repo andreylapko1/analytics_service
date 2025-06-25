@@ -1,11 +1,20 @@
 import logging
-
+import os
+from dotenv import load_dotenv
 from analys_app.utils.selenium_manager import pars_pages
 from analys_app.models import Product, ProductCategory
-
-WB_URL = 'https://www.wildberries.ru/catalog/0/search.aspx?search='
+load_dotenv()
+WB_URL = os.getenv('PARS_URL')
 
 def wb_category_parser(category_name, pages):
+    '''
+        Creating products objects in the database
+        Creating category objects in the database
+        Validate response data from parser
+    :param category_name:
+    :param pages:
+    :return: None
+    '''
     url = WB_URL + category_name
     pars_data = pars_pages(url, pages=pages)
     for product in pars_data:
