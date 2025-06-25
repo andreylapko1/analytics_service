@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Analys</title>
+</head>
+<body>
+<form action="http://127.0.0.1:8000/analys/form/" method="post">
+    {% csrf_token %}
+    <label for="category">Enter category</label>
+    <p>Enter category</p>
+    <input type="text" id="category" name="category_name">
+    <p>Press button to send</p>
+
+    <label for="page_count">Enter passing pages</label>
+    <input type="number" id="page_count" name="page_count">
+    <button type="submit">Send</button>
+</form>
+
+</body>
+</html>
