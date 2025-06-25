@@ -12,7 +12,7 @@ class ProductAdmin(admin.ModelAdmin):
 
 @admin.register(ProductCategory)
 class ProductCategoryAdmin(admin.ModelAdmin):
-    list_display = ('category_name', )
+    list_display = ('category_name', 'products_count',)
     search_fields = ('category_name',)
     readonly_fields = ('category_name', 'products_count',)
 # Register your models here.

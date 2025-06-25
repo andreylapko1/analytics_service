@@ -16,14 +16,14 @@ Follow these steps to get your project up and running on your local machine.
 
 ### Installation
 
-1.  **Clone the repository:**
+1. **Clone the repository:**
     ```bash
     git clone https://github.com/andreylapko1/analytics_service
     cd your_project_folder
     ```
     *(**Note:** Replace `https://github.com/andreylapko1/analytics_service` with the actual URL of your Git repository.)*
 
-2.  **Create and activate a virtual environment:**
+2. **Create and activate a virtual environment:**
     ```bash
     python -m venv .venv
     ```
@@ -36,7 +36,7 @@ Follow these steps to get your project up and running on your local machine.
         source .venv/bin/activate
         ```
 
-3.  **Install required libraries:**
+3. **Install required libraries:**
     If you don't have a `requirements.txt` file yet, generate it first:
     ```bash
     pip freeze > requirements.txt
@@ -46,19 +46,19 @@ Follow these steps to get your project up and running on your local machine.
     pip install -r requirements.txt
     ```
 
-4.  **Apply database migrations:**
+4. **Apply database migrations:**
     ```bash
     python manage.py makemigrations
     python manage.py migrate
     ```
 
-5.  **Create a superuser (optional, for admin panel access):**
+5. **Create a superuser (optional, for admin panel access):**
     ```bash
     python manage.py createsuperuser
     ```
     Follow the prompts to set up your administrator account.
 
-6.  **Run the development server:**
+6. **Run the development server:**
     ```bash
     python manage.py runserver
     ```
@@ -104,12 +104,13 @@ You can order the results by specific fields by using the `ordering` parameter. 
 
 ---
 
-## Contributing
+## Admin Panel
 
-If you'd like to contribute to this project, please feel free to fork the repository, make your changes, and submit a pull request!
+A full-featured **Django admin panel** is implemented and available at `http://127.0.0.1:8000/admin/` (accessible after logging in as a superuser).
 
----
+### Features:
 
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+* **Manage Products and Categories**: Add, edit, and delete products and categories directly from the admin interface.
+* **Filtering**: Admin list views support filtering by fields such as category, price, rating, and review count to efficiently navigate large datasets.
+* **Sorting**: Built-in sorting is enabled for various fields like `product_price`, `product_rate`, and `review_count` for easier data organization.
+* **Product Count per Category**: In the categories section, each category displays a counter showing the number of associated products, helping track group sizes at a glance.
