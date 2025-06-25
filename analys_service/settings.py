@@ -41,8 +41,9 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'analys_app.apps.AnalysAppConfig',
     'rest_framework',
-    'analys_app',
+    # 'analys_app',
     'django_filters',
 
 ]
