@@ -22,6 +22,7 @@ class Product(models.Model):
 
 class ProductCategory(models.Model):
     category_name = models.CharField(max_length=100, verbose_name='product category', null=True, blank=True)
+    products_count = models.IntegerField( verbose_name='products count', null=True, blank=True, default=0)
 
     class Meta:
         verbose_name = 'product category'

@@ -1,8 +1,12 @@
-import logging
+import django
 import os
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'analys_service.settings')
+django.setup()
+import logging
 from dotenv import load_dotenv
 from analys_app.utils.selenium_manager import pars_pages
 from analys_app.models import Product, ProductCategory
+
 load_dotenv()
 WB_URL = os.getenv('PARS_URL')
 
@@ -33,11 +37,10 @@ def wb_category_parser(category_name, pages):
                     'category': category,
                     'review_count': pars_data.get(product)[1],
                 }
+                product_instance = Product(**product_info)
+                product_instance.save()
             except Exception as e:
                 logging.exception(f'Error! {e}')
-            product_instance = Product(**product_info)
-
-            product_instance.save()
         except IndexError as e:
             logging.exception(f'Error! {e}')
 
